@@ -30,11 +30,16 @@ jobs:
         shell: bash
 
       - name: Download list
-        run: mkdir data && curl -o data/antifilter-community https://community.antifilter.download/list/domains.lst
+        run: |
+          mkdir -p data
+          curl -o data/antifilter https://antifilter.download/list/domains.lst
+          curl -o data/antifilter-community https://community.antifilter.download/list/domains.lst
 
       - name: Build dat file
         run: |
-          go run ./ --exportlists=antifilter-community --outputname=geosite.dat
+          export_lists=$(cd data && ls -1 | sed 's/\.[^.]*$//' | paste -sd ',')
+          echo "Export lists: ${export_lists}"
+          go run ./ --exportlists="${export_lists}" --outputname=geosite.dat
 
       - name: List output directory
         run: |
