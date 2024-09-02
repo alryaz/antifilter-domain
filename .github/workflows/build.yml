@@ -53,7 +53,7 @@ jobs:
       - name: Move data files to publish directory
         run: |
           mkdir -p publish
-          mv ./*.dat ./*.sha256sum ./publish
+          mv ./*.dat ./publish
 
       - name: Rename lists to have extensions
         run: |
