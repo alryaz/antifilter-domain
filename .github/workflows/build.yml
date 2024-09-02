@@ -32,31 +32,40 @@ jobs:
       - name: Download list
         run: |
           mkdir -p data
-          curl -o data/antifilter https://antifilter.download/list/domains.lst
-          curl -o data/antifilter-community https://community.antifilter.download/list/domains.lst
+          curl -s https://antifilter.download/list/domains.lst | grep -v '[^a-z0-9.\-\s]' > data/antifilter
+          curl -s -o data/antifilter-community https://community.antifilter.download/list/domains.lst
+          curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/YouTube/YouTube.list | grep -oP 'DOMAIN-SUFFIX,\K.*' > data/youtube
 
-      - name: Build dat file
+      - name: Build separate dat files
+        run: |
+          for file in data/*; do
+            name=$(basename $file)
+            echo "Export list: $name"
+            go run ./ --exportlists="${name}" --outputname="${name}.dat"
+          done
+          
+      - name: Build single dat file
         run: |
           export_lists=$(cd data && ls -1 | sed 's/\.[^.]*$//' | paste -sd ',')
           echo "Export lists: ${export_lists}"
           go run ./ --exportlists="${export_lists}" --outputname=geosite.dat
 
-      - name: List output directory
-        run: |
-          ls -R ./
-
-      - name: Generate sha256 hash
-        run: |
-          sha256sum geosite.dat > geosite.dat.sha256sum
-
-      - name: List directory before move
-        run: |
-          ls -R ./
-
-      - name: Move files to publish directory
+      - name: Move data files to publish directory
         run: |
           mkdir -p publish
           mv ./*.dat ./*.sha256sum ./publish
+
+      - name: Rename lists to have extensions
+        run: |
+          for file in data/*; do
+            cp "${file}" "publish/$(basename "${file}").list"
+          done
+
+      - name: Generate hashes for output files
+        run: |
+          for file in piblish/*; do
+            sha256sum "${file}" > "${file}.sha256sum"
+          done
 
       - name: List publish directory
         run: |
@@ -65,7 +74,6 @@ jobs:
       - name: Release and upload assets
         run: |
           gh release create ${{ env.TAG_NAME }} -t ${{ env.RELEASE_NAME }} \
-            ./publish/*.dat \
-            ./publish/*.dat.sha256sum
+            ./publish/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
